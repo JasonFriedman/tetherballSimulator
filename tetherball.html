@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Tetherball Game</title>
+    <style>
+        canvas {
+            background-color: #f0f0f0;
+            display: block;
+            margin: 0 auto;
+        }
+
+        #info {
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="gameCanvas" width="600" height="600"></canvas>
+    <div id="info">
+        <p id="instructions">Press and hold the space key to increase velocity. Release to launch the ball!</p>
+        <p id="results"></p>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = 200;
+        const targetRadius = 10;
+
+        let ballAngle = 0;
+        let bestAngle = 0;
+        let velocity = 0;
+        let holdTime = 0;
+        let isSpacePressed = false;
+        let startTime = null;
+        const targetAngle = 1.25 * Math.PI; // Fixed target angle (225 degrees)
+        let targetVisible = false;
+        let trialInProgress = false;
+        let waitingForNext = false;
+        let lastFrameTime = performance.now();
+
+        function resetGame() {
+            waitingForNext = false;
+            ballAngle = 0;
+            bestAngle = 0;
+            velocity = 0;
+            isSpacePressed = false;
+            startTime = null;
+            targetVisible = false;
+            trialInProgress = false;
+            minimumDistance = Infinity;
+
+            document.getElementById('results').textContent = '';
+            document.getElementById('instructions').textContent = 'Ready...';
+
+            // Show "Ready, Set, Go" sequence
+            setTimeout(() => {
+                document.getElementById('instructions').textContent = 'Set...';
+                setTimeout(() => {
+                    document.getElementById('instructions').textContent = 'Press and hold the space key to increase velocity. Release to launch the ball!';
+                    trialInProgress = true; // Allow the player to press space immediately after "Go!"
+                    setTimeout(() => {
+                        targetVisible = true;
+                        setTimeout(() => {
+                            targetVisible = false;
+                            setTimeout(() => {
+                                showResults();
+                            }, 1000); // End the trial 1 second after the target disappears
+                        }, 100);
+                    }, 6000); // The ball appears 6 seconds after go 
+                }, 1000); // The instructions appears after 1 second 
+            }, 1000); // "Set ..." appears after 1 second
+        }
+
+        function waitForNext() {
+            waitingForNext = true;
+        }
+
+        function showResults() {
+            document.getElementById('results').textContent = `Release Velocity: ${velocity.toFixed(2)} radians/second, Release Time: ${holdTime.toFixed(2)}s, Angle from Target: ${minimumDistance.toFixed(2)} radians`;
+            trialInProgress = false;
+            targetVisible = true;
+            ballAngle = bestAngle;
+            document.getElementById('instructions').textContent = 'Press space to start the next trial';
+            setTimeout(() => {
+                waitForNext();
+            }, 2000); // Reset game after 2 seconds
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !isSpacePressed && trialInProgress) {
+                isSpacePressed = true;
+                startTime = performance.now();
+            }
+            if (e.code == 'Space' && waitingForNext) {
+                resetGame();
+                waitingForNext = false;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'Space' && isSpacePressed && trialInProgress) {
+                isSpacePressed = false;
+                const endTime = performance.now();
+                holdTime = (endTime - startTime) / 1000; // Time in seconds
+                velocity = holdTime * 2; // Scale velocity
+            }
+        });
+
+        function drawTarget() {
+            if (targetVisible) {
+                const targetX = centerX + radius * Math.cos(targetAngle);
+                const targetY = centerY + radius * Math.sin(targetAngle);
+                ctx.beginPath();
+                ctx.arc(targetX, targetY, targetRadius, 0, Math.PI * 2);
+                ctx.fillStyle = 'red';
+                ctx.fill();
+                newAngle = calculateError();
+                if (trialInProgress && newAngle < minimumDistance) {
+//                    console.log('Current angle error:', newAngle);
+                    minimumDistance = newAngle;
+                    bestAngle = ballAngle;
+                }
+            }
+        }
+
+        function drawBall() {
+            const ballX = centerX + radius * Math.cos(ballAngle);
+            const ballY = centerY + radius * Math.sin(ballAngle);
+
+            // Draw the line from the center to the ball
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(ballX, ballY);
+            ctx.strokeStyle = 'black';
+            ctx.stroke();
+
+            // Draw the ball
+            ctx.beginPath();
+            ctx.arc(ballX, ballY, 10, 0, Math.PI * 2);
+            ctx.fillStyle = 'blue';
+            ctx.fill();
+        }
+
+        function updateBallPosition(deltaTime) {
+            if (trialInProgress) {
+                ballAngle += velocity * deltaTime;
+                ballAngle %= Math.PI * 2; // Keep angle within 0 to 2π
+            }
+        }
+
+        function calculateError() {
+            return Math.abs(targetAngle - ballAngle);
+        }
+
+        function gameLoop() {
+            const currentFrameTime = performance.now();
+            const deltaTime = (currentFrameTime - lastFrameTime) / 1000; // Time in seconds
+            lastFrameTime = currentFrameTime;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawTarget();
+            drawBall();
+            updateBallPosition(deltaTime);
+            requestAnimationFrame(gameLoop);
+        }
+
+        resetGame();
+        gameLoop();
+    </script>
+</body>
+
+</html>
