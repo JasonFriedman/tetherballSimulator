@@ -45,6 +45,7 @@
         let trialInProgress = false;
         let waitingForNext = false;
         let lastFrameTime = performance.now();
+        let trialStartTime = performance.now();
 
         function resetGame() {
             waitingForNext = false;
@@ -66,6 +67,7 @@
                 setTimeout(() => {
                     document.getElementById('instructions').textContent = 'Press and hold the space key to increase velocity. Release to launch the ball!';
                     trialInProgress = true; // Allow the player to press space immediately after "Go!"
+                    trialStartTime = performance.now(); 
                     setTimeout(() => {
                         targetVisible = true;
                         setTimeout(() => {
@@ -84,7 +86,7 @@
         }
 
         function showResults() {
-            document.getElementById('results').textContent = `Release Velocity: ${velocity.toFixed(2)} radians/second, Release Time: ${holdTime.toFixed(2)}s, Angle from Target: ${minimumDistance.toFixed(2)} radians`;
+            document.getElementById('results').textContent = `Release Velocity: ${velocity.toFixed(3)} radians/second, Release Time: ${releaseTime.toFixed(3)}s, Angle from Target: ${minimumDistance.toFixed(3)} radians`;
             trialInProgress = false;
             targetVisible = true;
             ballAngle = bestAngle;
@@ -109,6 +111,7 @@
             if (e.code === 'Space' && isSpacePressed && trialInProgress) {
                 isSpacePressed = false;
                 const endTime = performance.now();
+                releaseTime = (endTime - trialStartTime) / 1000; // Time in seconds
                 holdTime = (endTime - startTime) / 1000; // Time in seconds
                 velocity = holdTime * 2; // Scale velocity
             }
